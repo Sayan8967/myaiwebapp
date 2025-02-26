@@ -1,0 +1,11 @@
+server {
+  listen 80;
+  location / {
+    root /usr/share/nginx/html;
+    try_files $uri $uri/ /index.html;
+  }
+  location /index.html {
+    sub_filter_once off;
+    sub_filter '</head>' '<script>window.BACKEND_URL = "${BACKEND_URL}";</script></head>';
+  }
+}
