@@ -1,7 +1,7 @@
 version: '3.8'
 services:
   backend:
-    build: ./backend
+    image: sayan896/project-backend:latest
     ports:
       - "8000:8000"
     depends_on:
@@ -10,11 +10,9 @@ services:
     environment:
       - OLLAMA_URL=http://ollama:11434/api/generate
   ollama:
-    build:
-      context: ./ollama
-      dockerfile: Dockerfile
+    image: sayan896/project-ollama:latest
     ports:
-      - "11434:11434"
+      - "11434:11434"  
     volumes:
       - ollama-data:/root/.ollama
     healthcheck:
@@ -23,11 +21,13 @@ services:
       timeout: 5s
       retries: 5
   frontend:
-    build: ./frontend
+    image: sayan896/project-frontend:latest
     ports:
-      - "8081:80"
+      - "8081:80"  
     environment:
-      - BACKEND_URL=http://localhost:8000
-
+      - BACKEND_URL=http://backend:8000
+networks:
+  default:
+    driver: bridge
 volumes:
   ollama-data:
