@@ -8,9 +8,12 @@ import os
 
 app = FastAPI()
 
+# Get allowed origins from environment variable, default to localhost for development
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:8081").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8081"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

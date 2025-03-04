@@ -86,6 +86,8 @@ spec:
         env:
         - name: OLLAMA_URL
           value: "http://ollama:11434/api/generate"  # Points to Ollama service
+        - name: ALLOWED_ORIGINS
+          value: "*"  # Allows all origins for CORS; update to specific frontend URL in production
 
 ---
 # Service for Backend (internal access by frontend)
@@ -125,7 +127,7 @@ spec:
         - containerPort: 80
         env:
         - name: BACKEND_URL
-          value: ""  # Set to empty string for relative URLs
+          value: ""  # Assumes relative URLs with proxy setup in Nginx
 
 ---
 # Service for Frontend (external access via LoadBalancer)
@@ -134,7 +136,7 @@ kind: Service
 metadata:
   name: frontend
 spec:
-  type: LoadBalancer  # Changed from NodePort to LoadBalancer
+  type: LoadBalancer  # Exposes frontend externally
   selector:
     app: frontend
   ports:
