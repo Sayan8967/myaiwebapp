@@ -1,0 +1,143 @@
+---
+# PersistentVolumeClaim for Ollama data persistence
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: standard  # Adjust based on your cloud provider's storage class
+
+---
+# Deployment for Ollama service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama
+  template:
+    metadata:
+      labels:
+        app: ollama
+    spec:
+      containers:
+      - name: ollama
+        image: sayan896/project-ollama:latest
+        ports:
+        - containerPort: 11434
+        volumeMounts:
+        - name: ollama-data
+          mountPath: /root/.ollama
+        readinessProbe:  # Ensures the pod is ready when the server is up
+          httpGet:
+            path: /api/tags
+            port: 11434
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: ollama-data
+        persistentVolumeClaim:
+          claimName: ollama-pvc
+
+---
+# Service for Ollama (internal access only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+spec:
+  selector:
+    app: ollama
+  ports:
+    - protocol: TCP
+      port: 11434
+      targetPort: 11434
+  type: ClusterIP
+
+---
+# Deployment for Backend service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+      - name: backend
+        image: sayan896/project-backend:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: OLLAMA_URL
+          value: "http://ollama:11434/api/generate"  # Points to Ollama service
+
+---
+# Service for Backend (internal access by frontend)
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:
+    app: backend
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP
+
+---
+# Deployment for Frontend service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: sayan896/project-frontend:latest
+        ports:
+        - containerPort: 80
+        env:
+        - name: BACKEND_URL
+          value: ""  # Set to empty string for relative URLs
+
+---
+# Service for Frontend (external access via LoadBalancer)
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+spec:
+  type: LoadBalancer  # Changed from NodePort to LoadBalancer
+  selector:
+    app: frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
