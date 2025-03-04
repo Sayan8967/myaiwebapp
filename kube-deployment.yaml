@@ -80,7 +80,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: sayan896/project-backend:latest
+        image: sayan896/project-backend:01
         ports:
         - containerPort: 8000
         env:
@@ -122,7 +122,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: sayan896/project-frontend:latest
+        image: sayan896/project-frontend:01
         ports:
         - containerPort: 80
         env:
