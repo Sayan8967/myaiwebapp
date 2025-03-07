@@ -112,58 +112,58 @@
 
     <script>
       // Configurable backend URL (injected via env or defaults to local)
-      const BACKEND_URL = window.BACKEND_URL || "http://localhost:8000";
+      const BACKEND_URL = window.BACKEND_URL || "/api";
 
       document.getElementById("sendButton").addEventListener("click", async () => {
-        const query = document.getElementById("userQuery").value.trim();
-        const responseBox = document.getElementById("response");
-        const responseText = document.getElementById("responseText");
-        const loadingSpinner = document.getElementById("loadingSpinner");
+      const query = document.getElementById("userQuery").value.trim();
+      const responseBox = document.getElementById("response");
+      const responseText = document.getElementById("responseText");
+      const loadingSpinner = document.getElementById("loadingSpinner");
 
-        // Reset previous states
+  // Reset previous states
         responseBox.classList.remove("success", "error");
 
-        if (!query) {
-          alert("Please type a query.");
-          return;
-        }
+      if (!query) {
+        alert("Please type a query.");
+      return;
+      }
 
-        // Show response box and spinner
-        responseBox.style.display = "block";
-        loadingSpinner.style.display = "block";
-        responseText.textContent = "";
+  // Show response box and spinner
+      responseBox.style.display = "block";
+      loadingSpinner.style.display = "block";
+      responseText.textContent = "";
 
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 150000); // 1 min timeout
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 300000); // Changed to 5 minutes
 
-          const response = await fetch(`${BACKEND_URL}/query`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ query }),
-            signal: controller.signal,
-          });
-
-          clearTimeout(timeoutId);
-
-          if (!response.ok) throw new Error(`Server responded with status ${response.status}`);
-
-          const data = await response.json();
-          responseText.innerHTML = (data.response || "No response received.").replace(/\n/g, "<br>");
-          responseBox.classList.add("success");
-        } catch (error) {
-          responseBox.classList.add("error");
-          if (error.name === "AbortError") {
-            responseText.textContent = "Request timed out. Please try again.";
-          } else if (error.name === "TypeError" && error.message.includes("Failed to fetch")) {
-            responseText.textContent = "Network error or CORS issue. Please check your connection.";
-          } else {
-            responseText.textContent = `Error: ${error.message}`;
-          }
-        } finally {
-          loadingSpinner.style.display = "none";
-        }
+        const response = await fetch(`${BACKEND_URL}/query`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) throw new Error(`Server responded with status ${response.status}`);
+
+      const data = await response.json();
+      responseText.innerHTML = (data.response || "No response received.").replace(/\n/g, "<br>");
+      responseBox.classList.add("success");
+    } catch (error) {
+      responseBox.classList.add("error");
+    if (error.name === "AbortError") {
+      responseText.textContent = "Request timed out. Please try again.";
+    } else if (error.name === "TypeError" && error.message.includes("Failed to fetch")) {
+      responseText.textContent = "Network error or CORS issue. Please check your connection.";
+    } else {
+      responseText.textContent = `Error: ${error.message}`;
+    }
+    } finally {
+      loadingSpinner.style.display = "none";
+  }
+});
 
       document.getElementById("clearButton").addEventListener("click", () => {
         document.getElementById("userQuery").value = "";

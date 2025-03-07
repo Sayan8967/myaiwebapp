@@ -9,8 +9,9 @@ server {
     sub_filter '</head>' '<script>window.BACKEND_URL = "${BACKEND_URL}";</script></head>';
   }
   location /query {
-    proxy_pass http://backend:8000;  # Proxies to backend service
+    proxy_pass http://backend:8000/query;  # Fixed to include /query
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   }
 }

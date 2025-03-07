@@ -10,7 +10,7 @@ spec:
   resources:
     requests:
       storage: 1Gi
-  storageClassName: standard  # Adjust based on your cloud provider's storage class
+  storageClassName: standard
 
 ---
 # Deployment for Ollama service
@@ -36,12 +36,19 @@ spec:
         volumeMounts:
         - name: ollama-data
           mountPath: /root/.ollama
-        readinessProbe:  # Ensures the pod is ready when the server is up
+        readinessProbe:
           httpGet:
             path: /api/tags
             port: 11434
-          initialDelaySeconds: 10
+          initialDelaySeconds: 120
           periodSeconds: 10
+        resources:
+          requests:
+            memory: "3.1Gi"
+            cpu: "2"
+          limits:
+            memory: "3.2Gi"
+            cpu: "2"
       volumes:
       - name: ollama-data
         persistentVolumeClaim:
@@ -57,7 +64,7 @@ spec:
   selector:
     app: ollama
   ports:
-    - protocol: TCP
+    - protocol: "TCP"
       port: 11434
       targetPort: 11434
   type: ClusterIP
@@ -85,24 +92,24 @@ spec:
         - containerPort: 8000
         env:
         - name: OLLAMA_URL
-          value: "http://ollama:11434/api/generate"  # Points to Ollama service
+          value: "http://ollama:11434/api/generate"
         - name: ALLOWED_ORIGINS
-          value: "*"  # Allows all origins for CORS; update to specific frontend URL in production
+          value: "*"
 
 ---
-# Service for Backend (internal access by frontend)
+# Service for Backend (ClusterIP)
 apiVersion: v1
 kind: Service
 metadata:
   name: backend
 spec:
+  type: ClusterIP
   selector:
     app: backend
   ports:
-    - protocol: TCP
+    - protocol: "TCP"
       port: 8000
       targetPort: 8000
-  type: ClusterIP
 
 ---
 # Deployment for Frontend service
@@ -122,24 +129,52 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: sayan896/project-frontend:01
+        image: sayan896/project-frontend:03
         ports:
         - containerPort: 80
         env:
         - name: BACKEND_URL
-          value: ""  # Assumes relative URLs with proxy setup in Nginx
+          value: "/api"
 
 ---
-# Service for Frontend (external access via LoadBalancer)
+# Service for Frontend (ClusterIP)
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend
 spec:
-  type: LoadBalancer  # Exposes frontend externally
+  type: ClusterIP
   selector:
     app: frontend
   ports:
-    - protocol: TCP
+    - protocol: "TCP"
       port: 80
       targetPort: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
+      - path: /api(/|$)(.*)
+        pathType: ImplementationSpecific  # Required for regex
+        backend:
+          service:
+            name: backend
+            port:
+              number: 8000
