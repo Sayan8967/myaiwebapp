@@ -23,7 +23,7 @@ services:
       timeout: 5s
       retries: 5
   frontend:
-    build: ./frontend
+    build: ./frontend/frontend
     ports:
       - "8081:80"
     environment:

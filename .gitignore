@@ -1,1 +1,8 @@
 ReadMe.txt
+.terraform
+.terraform.lock.hcl
+.terraform/*
+provider.tf
+main.tfplan
+.gitignore
+kube-deployment.yaml

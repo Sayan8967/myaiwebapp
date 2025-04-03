@@ -30,10 +30,10 @@ spec:
           periodSeconds: 10
         resources:
           requests:
-            memory: "5Gi"
+            memory: "3Gi"
             cpu: "2"
           limits:
-            memory: "6Gi"
+            memory: "3.5Gi"
             cpu: "2"
       volumes:
       - name: ollama-data
@@ -80,6 +80,20 @@ spec:
           value: "http://ollama:11434/api/generate"
         - name: ALLOWED_ORIGINS
           value: "*"
+        - name: CORS_ALLOW_CREDENTIALS
+          value: "true"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 20
 
 ---
 # Service for Backend (ClusterIP)
@@ -114,12 +128,30 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: sayan896/project-frontend:03
+        image: sayan896/project-frontend:05
         ports:
-        - containerPort: 80
+        - containerPort: 8080
         env:
         - name: BACKEND_URL
-          value: "/api"
+          valueFrom:
+            configMapKeyRef:
+              name: app-config
+              key: backend_url
+              optional: true
+        - name: NODE_ENV
+          value: "production"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 20
 
 ---
 # Service for Frontend (ClusterIP)
@@ -134,7 +166,18 @@ spec:
   ports:
     - protocol: "TCP"
       port: 80
-      targetPort: 80
+      targetPort: 8080
+
+---
+# IngressClass definition
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: nginx
+  annotations:
+    ingressclass.kubernetes.io/is-default-class: "true"
+spec:
+  controller: k8s.io/ingress-nginx
 
 ---
 # Ingress for routing
@@ -147,22 +190,38 @@ metadata:
     nginx.ingress.kubernetes.io/use-regex: "true"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "300"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, PUT, POST, DELETE, PATCH, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/cors-allow-credentials: "true"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "*"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
 spec:
   ingressClassName: nginx
   rules:
   - http:
       paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: frontend
-            port:
-              number: 80
       - path: /api(/|$)(.*)
-        pathType: ImplementationSpecific  # Required for regex
+        pathType: ImplementationSpecific
         backend:
           service:
             name: backend
             port:
               number: 8000
+      - path: /()(.*)
+        pathType: ImplementationSpecific
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  backend_url: "/api"
